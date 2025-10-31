@@ -1,0 +1,46 @@
+---
+title: "MLB Payroll analysis"
+author: "Lin, Po-Wei"
+date: "2025-10-31"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    df_print: paged
+  pdf_document:
+    toc: true
+    number_sections: true
+    latex_engine: xelatex
+fontsize: 11pt
+header-includes:
+  - \usepackage{fontspec}
+  - \setmainfont{Noto Serif CJK TC}
+  - \setsansfont{Noto Sans CJK TC}
+  - \setmonofont{JetBrains Mono}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE
+  )
+library(tidyverse)
+library(knitr)
+library(ggplot2)
+library(readr)
+```
+
+Import the MLB payroll dataset.
+
+```{r}
+#Import the dataset
+raw_url <- "https://raw.githubusercontent.com/pwlinbernie/MLB-payroll-analysis/refs/heads/main/mlb_payrolls.csv"
+mlb <- read_csv(raw_url)
+
+#check
+dim(mlb)
+head(mlb)
+glimpse(mlb)
+```
