@@ -30,10 +30,12 @@ library(tidyverse)
 library(knitr)
 library(ggplot2)
 library(readr)
+library(janitor)
+library(stringr)
+library(scales)
 ```
 
-Import the MLB payroll dataset.
-
+# Importing and Exploring the Dataset
 ```{r}
 #Import the dataset
 raw_url <- "https://raw.githubusercontent.com/pwlinbernie/MLB-payroll-analysis/refs/heads/main/mlb_payrolls.csv"
@@ -44,3 +46,92 @@ dim(mlb)
 head(mlb)
 glimpse(mlb)
 ```
+The dataset contains information on each MLB team’s annual payroll and performance from multiple seasons, including total payroll allocations, wins, losses, and postseason results.
+Before conducting any analysis, it’s essential to understand the data structure and verify that the variables are properly imported.
+
+# Data Cleaning and Variable Preparation
+```{r}
+mlb <- mlb |>
+    clean_names() |>
+    mutate(
+      team = coalesce(team, 'team_name'),
+      year = as.integer(year),
+      payroll = parse_number(total_payroll_allocations),
+      active26 = parse_number(active_26_man),
+      wins = as.integer(wins),
+      losses = as.integer(losses),
+      games = wins + losses,
+      win_pct = if_else(games > 0, wins / games, NA_real_),
+      #postseason
+      postseason =na_if(as.character(postseason), ""),
+      playoffs_bin = case_when(
+        is.na(postseason) ~0L,
+        str_detect(str_to_lower(postseason), "no playoffs") ~0L,
+        TRUE ~ 1L
+      ),
+      log_payroll = log(payroll)
+)
+# check
+names(mlb)
+summary(select(mlb, payroll, active26, wins, losses, win_pct, playoffs_bin))
+sum(is.na(mlb$payroll)); sum(is.na(mlb$active26))
+```
+Standardizing column names and converts key variables into numeric formats.
+
+payroll and active26 are parsed as numerical values.
+win_pct is calculated from total wins and losses.
+playoffs_bin is created as a binary indicator (1 = made playoffs, 0 = did not).
+log_payroll is the natural logarithm of payroll, reducing skewness in later analysis.
+
+# Payroll Distribution (Histogram)
+```{r histogram}
+
+```
+
+# Payroll vs. Winning Percentage (Scatterplot with Regression Line)
+```{r scatter}
+ggplot(mlb, aes(x = log_payroll, y = win_pct)) +
+  geom_point(alpha = 0.5, color = "steelblue") +
+  geom_smooth(method = "lm", se = FALSE, color = "black", linewidth = 0.8) +
+  scale_y_continuous(labels = percent) +
+  labs(title = "Payroll vs. Winning Percentage",
+       x = "log(Payroll)", y = "Winning Percentage") +
+  facet_wrap(~ year)
+
+```
+For the scatterplot, we can see that:
+1. Across almost all panels, the fitted OLS line has a positive slope, indicating that higher payroll is associated with higher winning percentage in the same season.
+2. Teams with very high payrolls cluster toward the upper-right; however, there is substantial vertical spread at many payroll levels, implying that payroll alone does not fully determine performance.
+3. A few low-payroll but above-.500 teams (upper-left area) and high-payroll under-.500 teams (lower-right area) illustrate that efficiency, roster construction, injuries, and coaching likely moderate the payroll–performance link.
+
+There is a consistent positive relationship between payroll and winning percentage within seasons, but with meaningful dispersion—payroll helps, yet it does not guarantee success.
+
+# Winning Percentage by Payroll Quartile (Boxplot)
+```{r boxplot}
+mlb <- mlb |>
+  mutate(payroll_q = ntile(payroll, 4))
+
+ggplot(mlb, aes(x = factor(payroll_q), y = win_pct)) +
+  geom_boxplot(fill = "gray") +
+  scale_y_continuous(labels = percent) +
+  labs(title = "Winning Percentage by Payroll Quartile",
+       x = "Payroll Quartile (1 = Lowest, 4 = Highest)",
+       y = "Winning Percentage")
+```
+For the boxplot, we can see that:
+1. The median winning percentage rises from Q1 (lowest payroll) to Q4 (highest payroll), consistent with the hypothesis that higher payrolls are associated with better performance on average.
+2. Both the interquartile range (IQR) and the upper whiskers shift upward across quartiles, meaning not only the typical team but also the upper performers tend to improve with payroll.
+3. Despite the upward shift, the boxes/whiskers overlap across quartiles, showing that some lower-payroll teams outperform higher-payroll teams and vice versa. Payroll is a strong correlate, not a guarantee.
+
+The quartile comparison provides clear descriptive evidence that higher payroll groups tend to win more, yet variance and overlap indicate that other factors (roster age, injuries, development, front-office quality) remain important.
+
+# Playoff qualification rate by payroll quartile (proportion barplot)
+```{r}
+
+```
+
+# Payroll vs playoff probability (loess or logistic preview)
+```{r}
+
+```
+
