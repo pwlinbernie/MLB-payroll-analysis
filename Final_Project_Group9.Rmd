@@ -207,4 +207,12 @@ ggplot() +
 
 
 ```
+For the playoff probability plots, we can see that:
+1.The nonlinear loess smoothing plot (left) illustrates the actual data trend between team payroll and the probability of making the playoffs.
+2.The blue curve shows a clear upward trend: as payroll increases, the predicted playoff probability rises noticeably, especially when the logarithm of payroll exceeds approximately 18.5.
+3.The widening gray confidence bands at both ends indicate higher uncertainty due to fewer teams at extreme payroll levels.
+4.The logistic regression curve (right) depicts the model-based linear-in-logit relationship between payroll and playoff probability.
+5.The nearly flat black line suggests that, after controlling for year and team age, the marginal effect of payroll on playoff qualification is relatively small.
+6.Comparing both plots reveals that the true relationship is nonlinear—the logistic model underestimates the sharp increase in playoff probability among top-spending teams.
 
+In summary,payroll has a positive association with playoff qualification, but the effect is nonlinear. High-payroll teams enjoy a substantially greater likelihood of reaching the postseason, while payroll advantages become significant only beyond the top spending levels.
