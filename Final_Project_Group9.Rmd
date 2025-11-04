@@ -127,11 +127,84 @@ The quartile comparison provides clear descriptive evidence that higher payroll 
 
 # Playoff qualification rate by payroll quartile (proportion barplot)
 ```{r}
+mlb$Payroll_Group <- ntile(mlb$total_payroll_allocations, 4)
+mlb$Playoff <- ifelse(mlb$postseason == "No Playoffs", "No", "Yes")
+
+library(ggplot2)
+library(scales)
+
+mlb$Payroll_Group <- factor(mlb$Payroll_Group,
+                            labels = c("Q1 (Lowest)", "Q2", "Q3", "Q4 (Highest)"))
+
+ggplot(mlb, aes(x = factor(Payroll_Group), fill = Playoff)) +
+  geom_bar(position = "fill") +
+  scale_y_continuous(labels = scales::percent) +
+  labs(title = "Playoff Qualification Rate by Payroll Quartile",
+       x = "Payroll Quartile",
+       y = "Proportion of Teams") +
+  scale_fill_manual(values = c("No" = "gray70", "Yes" = "#1f78b4"))
 
 ```
+For the proportion barplot, we can see that:
+1.Each bar represents a payroll quartile group (Q1–Q4), ranked from lowest to highest payroll.
+2.The blue section shows the proportion of teams that qualified for the playoffs, while the gray section represents those that did not.
+3.Higher-payroll teams (Q3–Q4) generally exhibit slightly higher qualification rates than lower-payroll teams (Q1–Q2).
+4.However, the differences are not very large—some low-payroll teams still managed to reach the postseason.
+5.This pattern indicates that payroll alone does not fully determine success; other factors such as player development, management strategy, and team efficiency also influence playoff outcomes.
+
+In summary,while there is a positive association between team payroll and playoff qualification, the relationship is not deterministic. Payroll provides a competitive advantage, but effective management and team strategy remain key to achieving postseason success.
 
 # Payroll vs playoff probability (loess or logistic preview)
 ```{r}
+library(dplyr)
+library(readr)   
+library(ggplot2)
+library(scales)
+
+mlb <- mlb %>%
+  mutate(
+    payroll_num  = parse_number(total_payroll_allocations), 
+    average_age  = as.numeric(average_age),
+    year         = as.integer(year),
+    Playoff_bin  = ifelse(postseason %in% c("No Play", "No Playoffs", "No"), 0, 1)
+  )
+
+
+model_logit <- glm(Playoff_bin ~ log(payroll_num) + average_age + year,
+                   data = mlb, family = "binomial")
+
+
+mlb$predicted_prob <- predict(model_logit, type = "response")
+
+
+ggplot(mlb, aes(x = log(payroll_num), y = predicted_prob)) +
+  geom_point(color = "darkred", alpha = 0.6) +
+  geom_smooth(method = "loess") +
+  scale_y_continuous(labels = percent, limits = c(0,1)) +
+  labs(title = "Predicted Probability of Making Playoffs",
+       x = "Log of Payroll", y = "Predicted Probability") +
+  theme_minimal()
+
+
+newdat <- with(mlb, data.frame(
+  payroll_num = seq(min(payroll_num, na.rm = TRUE),
+                    max(payroll_num, na.rm = TRUE), length.out = 200),
+  average_age = mean(average_age, na.rm = TRUE),
+  year        = max(year, na.rm = TRUE) 
+))
+newdat$pred <- predict(model_logit, newdata = newdat, type = "response")
+
+ggplot() +
+  geom_point(data = mlb,
+             aes(x = log(payroll_num), y = Playoff_bin),
+             alpha = 0.2, position = position_jitter(height = 0.02)) +
+  geom_line(data = newdat,
+            aes(x = log(payroll_num), y = pred), linewidth = 1) +
+  scale_y_continuous(labels = percent, limits = c(0,1)) +
+  labs(title = "Logistic Curve: Payroll vs. Playoff Probability",
+       x = "Log of Payroll", y = "Predicted Probability") +
+  theme_minimal()
+
 
 ```
 
