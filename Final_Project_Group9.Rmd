@@ -216,3 +216,75 @@ For the playoff probability plots, we can see that:
 6.Comparing both plots reveals that the true relationship is nonlinear—the logistic model underestimates the sharp increase in playoff probability among top-spending teams.
 
 In summary,payroll has a positive association with playoff qualification, but the effect is nonlinear. High-payroll teams enjoy a substantially greater likelihood of reaching the postseason, while payroll advantages become significant only beyond the top spending levels.
+
+
+# Distribution of MLB Team Payrolls (Histogram & Density)
+```{r}
+# Raw payroll: histogram on density scale + density curve
+ggplot(mlb, aes(x = payroll)) +
+  geom_histogram(aes(y = after_stat(density)), bins = 30,
+                 fill = "steelblue", color = "white") +
+  geom_density(adjust = 1.1) +
+  scale_x_continuous(labels = scales::label_dollar()) +
+  labs(x = "Total Payroll", y = "Density",
+       title = "Distribution of MLB Team Payrolls (Histogram & Density)") +
+  theme_minimal()
+
+# Log payroll: same idea
+ggplot(mlb, aes(x = log_payroll)) +
+  geom_histogram(aes(y = after_stat(density)), bins = 30,
+                 fill = "steelblue", color = "white") +
+  geom_density(adjust = 1.1) +
+  labs(x = "log(Payroll)", y = "Density",
+       title = "Distribution of log(Payroll) (Histogram & Density)") +
+  theme_minimal()
+```
+For the payroll distribution plots, we can see that:
+1.Raw payroll (left) — The histogram with a density overlay is heavily right-skewed: most teams cluster at low–mid payrolls, with a long right tail of a few top spenders. In such skewed data, the mean typically exceeds the median, and outliers can dominate raw-scale comparisons.
+2.Using density scale means bar heights reflect probability density (areas integrate to 1), so the histogram and the smooth curve are directly comparable in shape, not in counts.
+3.Log payroll (right) — After taking logs, the long tail is compressed, producing a distribution that is more concentrated and closer to bell-shaped. This makes patterns easier to see and supports more stable, interpretable linear/GLM modeling.
+4.The contrast between the two panels motivates using log(payroll) in subsequent plots and regressions to reduce skewness and improve comparability across teams (and seasons).
+MLB payrolls are strongly right-skewed; transforming to log(payroll) yields cleaner visuals and more reliable inference.
+
+
+
+# Executive Summary
+Objective. Assess how MLB team payroll relates to on-field performance (winning percentage and playoff qualification) across seasons, and clarify whether the relationship is linear or exhibits thresholds.
+
+Data & Preparation. Team–season panel containing total payroll allocations, active-roster payroll, wins/losses, and postseason results. Variables were standardized and parsed to numeric; key derived fields include win_pct = wins/(wins+losses), a binary playoffs_bin (1 = made playoffs, 0 = did not), and log_payroll = log(payroll) to mitigate right-skew.
+
+Key Findings.
+
+1.Payroll vs. Winning % (scatter + OLS, by season).
+The fitted OLS line is consistently upward within seasons: higher payrolls are associated with higher winning percentages.
+Vertical dispersion is large at most payroll levels: payroll helps, but it does not fully determine outcomes.
+Counterexamples (low-payroll > .500; high-payroll < .500) imply moderating factors such as roster construction, injuries, coaching, and schedule strength.
+
+2.Winning % by Payroll Quartile (boxplots).
+Medians and upper whiskers rise from Q1 to Q4, indicating better average performance for higher-payroll groups.
+Overlap across quartiles remains meaningful, reinforcing that payroll is a strong correlate—not a guarantee.
+
+3.Playoff Qualification Rates by Payroll Quartile (proportion bars).
+
+Higher quartiles exhibit higher playoff rates, though differences are not overwhelming; low-payroll playoff teams persist.
+Interpreted together with (1)–(2), this supports a positive association while underscoring significant variance.
+
+4.Playoff Probability vs. Payroll (LOESS & logistic views).
+
+The LOESS curve reveals a positive but nonlinear pattern: playoff odds rise with payroll and steepen near the top-spending range.
+A simple logistic regression (controlling for year and average age) increases more gently across most of the range and can understate the sharp uptick among elite payrolls.
+Net: the payoff to spending is concentrated at the very top; mid-range marginal effects are modest after controls.
+
+5.Distribution of Payrolls (histogram & density).
+Raw payrolls are heavily right-skewed with a long tail of top spenders; means exceed medians and outliers dominate raw-scale comparisons.
+
+Using log(payroll) compresses the tail, yielding a more concentrated, near-bell shape and more stable, interpretable modeling.
+
+This motivates expressing scatterplots/regressions in log-payroll space.
+
+Conclusions.
+The relationship between payroll and performance is reliably positive but meaningfully dispersed and nonlinear.
+Spending helps, yet the largest gains accrue only at the very top of the spending distribution.
+At similar payrolls, outcomes vary widely—execution quality (scouting, development, health, in-game strategy, coaching) remains pivotal.
+
+
