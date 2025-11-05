@@ -33,6 +33,7 @@ library(readr)
 library(janitor)
 library(stringr)
 library(scales)
+library(dplyr)
 ```
 
 # Importing and Exploring the Dataset
@@ -51,17 +52,22 @@ Before conducting any analysis, it’s essential to understand the data structur
 
 # Data Cleaning and Variable Preparation
 ```{r}
+# Convert wins/losses to numeric and compute winning percentage
 mlb <- mlb |>
     clean_names() |>
     mutate(
-      team = coalesce(team, 'team_name'),
+      team = coalesce(team, team_name),
       year = as.integer(year),
+      
       payroll = parse_number(total_payroll_allocations),
       active26 = parse_number(active_26_man),
+      
+      # Compute total games and winning percentage for each team-season
       wins = as.integer(wins),
       losses = as.integer(losses),
       games = wins + losses,
       win_pct = if_else(games > 0, wins / games, NA_real_),
+        
       #postseason
       postseason =na_if(as.character(postseason), ""),
       playoffs_bin = case_when(
@@ -69,8 +75,10 @@ mlb <- mlb |>
         str_detect(str_to_lower(postseason), "no playoffs") ~0L,
         TRUE ~ 1L
       ),
+      
       log_payroll = log(payroll)
 )
+
 # check
 names(mlb)
 summary(select(mlb, payroll, active26, wins, losses, win_pct, playoffs_bin))
@@ -126,9 +134,6 @@ The quartile comparison provides clear descriptive evidence that higher payroll 
 mlb$Payroll_Group <- ntile(mlb$total_payroll_allocations, 4)
 mlb$Playoff <- ifelse(mlb$postseason == "No Playoffs", "No", "Yes")
 
-library(ggplot2)
-library(scales)
-
 mlb$Payroll_Group <- factor(mlb$Payroll_Group,
                             labels = c("Q1 (Lowest)", "Q2", "Q3", "Q4 (Highest)"))
 
@@ -152,11 +157,6 @@ In summary,while there is a positive association between team payroll and playof
 
 # Payroll vs playoff probability (loess or logistic preview)
 ```{r}
-library(dplyr)
-library(readr)   
-library(ggplot2)
-library(scales)
-
 mlb <- mlb %>%
   mutate(
     payroll_num  = parse_number(total_payroll_allocations), 
