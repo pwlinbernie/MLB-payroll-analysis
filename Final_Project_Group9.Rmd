@@ -83,10 +83,6 @@ win_pct is calculated from total wins and losses.
 playoffs_bin is created as a binary indicator (1 = made playoffs, 0 = did not).
 log_payroll is the natural logarithm of payroll, reducing skewness in later analysis.
 
-# Payroll Distribution (Histogram)
-```{r histogram}
-
-```
 
 # Payroll vs. Winning Percentage (Scatterplot with Regression Line)
 ```{r scatter}
