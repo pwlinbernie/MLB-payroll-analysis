@@ -1,6 +1,6 @@
 ---
 title: "MLB Payroll analysis"
-author: "Lin, Po-Wei"
+author: "Group 9 Yun An Chen, Hsin Yun Li, Po wei Lin"
 date: "2025-10-31"
 output:
   html_document:
