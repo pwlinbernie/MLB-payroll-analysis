@@ -3,6 +3,9 @@ title: "MLB Payroll analysis"
 author: "Group 9 Yun An Chen, Hsin Yun Li, Po wei Lin"
 date: "2025-10-31"
 output:
+  word_document:
+    toc: true
+    toc_depth: '3'
   html_document:
     toc: true
     toc_depth: 3
@@ -14,10 +17,10 @@ output:
     latex_engine: xelatex
 fontsize: 11pt
 header-includes:
-  - \usepackage{fontspec}
-  - \setmainfont{Noto Serif CJK TC}
-  - \setsansfont{Noto Sans CJK TC}
-  - \setmonofont{JetBrains Mono}
+- \usepackage{fontspec}
+- \setmainfont{Noto Serif CJK TC}
+- \setsansfont{Noto Sans CJK TC}
+- \setmonofont{JetBrains Mono}
 ---
 
 ```{r setup, include=FALSE}
@@ -34,6 +37,7 @@ library(janitor)
 library(stringr)
 library(scales)
 library(dplyr)
+library(broom)
 ```
 
 # Importing and Exploring the Dataset
@@ -91,6 +95,9 @@ win_pct is calculated from total wins and losses.
 playoffs_bin is created as a binary indicator (1 = made playoffs, 0 = did not).
 log_payroll is the natural logarithm of payroll, reducing skewness in later analysis.
 
+#------------------------------------------------------------------------------#
+# First Visualization                                                          #
+#------------------------------------------------------------------------------#
 
 # Payroll vs. Winning Percentage (Scatterplot with Regression Line)
 ```{r scatter}
@@ -283,4 +290,124 @@ The relationship between payroll and performance is reliably positive but meanin
 Spending helps, yet the largest gains accrue only at the very top of the spending distribution.
 At similar payrolls, outcomes vary widely—execution quality (scouting, development, health, in-game strategy, coaching) remains pivotal.
 
+#------------------------------------------------------------------------------#
+# First Analysis                                                               #
+#------------------------------------------------------------------------------#
 
+# OLS
+```{r}
+
+```
+
+Earlier in the visualization section, we included a plot called “Payroll vs playoff probability (loess or logistic preview)”.
+That plot was mainly part of our initial exploration, just to get a basic sense of how payroll might relate to the chance of making the playoffs. It wasn’t meant to be a final or formal model — more like a first look at the data.
+In the following analysis, we revisit the same question using a cleaner dataset structure and more appropriate modeling choices, so the next few plots represent our formal version of the analysis.
+# Payroll vs. Playoff Probability — Logistic Regression
+```{r logit-data, message=FALSE, warning=FALSE}
+mlb_logit <- mlb |>
+  mutate(
+    average_age = as.numeric(average_age)
+  ) |>
+  filter(!is.na(playoffs_bin),
+         !is.na(log_payroll),
+         !is.na(average_age),
+         !is.na(year))
+nrow(mlb_logit)
+```
+This step prepares the dataset for logistic regression by converting roster age to a numeric variable and removing rows with missing values in key fields. This ensures that the model is estimated using complete and consistent information across payroll, age, year, and playoff outcomes.
+
+# Logistic regression model + Odds Ratios
+```{r logit-fit, message=FALSE, warning=FALSE}
+fit_logit <- glm(playoffs_bin ~log_payroll + average_age + factor(year),
+                 data = mlb_logit, family = binomial)
+
+coefs_or <- tidy(fit_logit, conf.int = TRUE, conf.level = 0.95, exponentiate = TRUE)
+kable(coefs_or, digits = 3, caption = "Logistic regression (odds ratios)")
+```
+We fit a logistic regression model to estimate how payroll affects the likelihood of making the playoffs, controlling for team age and year fixed effects. The table shows odds ratios, which indicate how much the odds of reaching the postseason change for each unit increase in log payroll.
+# Logistic prediction curve + 95% confidence interval
+```{r logit-line, message=FALSE, warning=FALSE}
+# 預測機率 vs 薪資 的主曲線，固定 year=最新年份、age=樣本平均
+logp_seq <- seq(min(mlb_logit$log_payroll, na.rm = TRUE),
+                max(mlb_logit$log_payroll, na.rm = TRUE), length.out = 200)
+
+newdat <- tibble(
+  log_payroll = logp_seq,
+  average_age = mean(mlb_logit$average_age, na.rm = TRUE),
+  year        = max(mlb_logit$year, na.rm = TRUE)
+)
+
+# 取得SE
+pred_link <- predict(fit_logit, newdata = newdat, type = "link", se.fit = TRUE)
+newdat <- newdat |>
+  mutate(
+    fit  = plogis(pred_link$fit),
+    lwr  = plogis(pred_link$fit - 1.96 * pred_link$se.fit),
+    upr  = plogis(pred_link$fit + 1.96 * pred_link$se.fit)
+  )
+
+ggplot() +
+
+  geom_jitter(data = mlb_logit,
+              aes(x = log_payroll, y = playoffs_bin),
+              height = 0.05, alpha = 0.15, color = "grey40") +
+  # 模型預測：主曲線 + 95% CI
+  geom_ribbon(data = newdat, aes(x = log_payroll, ymin = lwr, ymax = upr),
+              alpha = 0.2) +
+  geom_line(data = newdat, aes(x = log_payroll, y = fit), linewidth = 1) +
+  scale_y_continuous(labels = scales::percent, limits = c(0, 1)) +
+  labs(title = "Predicted Probability of Making Playoffs",
+       subtitle = "Logistic regression with controls for year (FE) and average age",
+       x = "log(Payroll)", y = "Predicted Probability") +
+  theme_minimal()
+```
+This plot visualizes the predicted probability of making the playoffs across different payroll levels, based on a logistic regression model that includes log-transformed payroll as the main predictor and controls for team average age and year fixed effects. The black line shows the estimated probability, while the shaded band gives the 95% confidence interval. The gray jittered points represent actual team-season outcomes (0 = missed playoffs; 1 = made playoffs), helping us see how the model-based curve aligns with the observed data.
+
+# LOESS smoother: non-parametric preview
+```{r}
+ggplot(mlb_logit, aes(x = log_payroll, y = playoffs_bin)) +
+  geom_jitter(height = 0.05, alpha = 0.15, color = "grey40") +
+  geom_smooth(method = "loess") +
+  scale_y_continuous(labels = percent, limits = c(0, 1)) +
+  labs(title = "LOESS Smoother: Payroll vs. Playoff Probability",
+       x = "log(Payroll)", y = "Probability of Making Playoffs") +
+  theme_minimal()
+```
+This LOESS curve provides a flexible, non-parametric view of the payroll–playoff relationship. It does not rely on any statistical model assumptions and instead captures the trend directly from the data. The smoother suggests a slight upward pattern, supporting the idea that higher payroll may help, although the overall relationship appears fairly weak or noisy.
+
+# Binned playoff rates (non-parametric)
+```{r logit-binned, message=FALSE, warning=FALSE}
+# 分箱平均
+ggplot(mlb_logit, aes(x = log_payroll, y = playoffs_bin)) +
+  stat_summary_bin(fun = mean, bins = 12, geom = "point", size = 2) +
+  stat_summary_bin(fun = mean, bins = 12, geom = "line") +
+  scale_y_continuous(labels = scales::percent, limits = c(0,1)) +
+  labs(title = "Average Playoff Rate by Payroll Bin",
+       x = "log(Payroll)", y = "Proportion Making Playoffs") +
+  theme_minimal()
+```
+This figure shows the empirical proportion of teams that made the playoffs within evenly spaced bins of log payroll. Each point represents the average playoff rate among teams falling into that payroll range, and the line connects these bin-level averages to highlight the trend without imposing a functional form.
+
+# Predicted curves by year (optional)
+```{r logit-byyear, eval=FALSE}
+# 觀察年度間斜率差異
+yr_keep <- sort(unique(mlb_logit$year))
+grid <- expand.grid(
+  log_payroll = logp_seq,
+  average_age = mean(mlb_logit$average_age, na.rm = TRUE),
+  year        = yr_keep
+)
+pred_by_year <- predict(fit_logit, newdata = grid, type = "response")
+grid$pred <- pred_by_year
+
+ggplot(grid, aes(x = log_payroll, y = pred, color = factor(year))) +
+  geom_line() +
+  scale_y_continuous(labels = scales::percent, limits = c(0,1)) +
+  labs(title = "Payroll → Playoff Probability by Year",
+       x = "log(Payroll)", y = "Predicted Probability", color = "Year") +
+  theme_minimal()
+```
+This plot shows the logistic regression predictions separately for each season. While the slopes remain modest in all years, the vertical shifts between lines indicate that some seasons were generally easier or harder for teams to reach the postseason. This helps contextualize payroll effects within year-to-year league differences.
+
+While logistic regression with linear log-payroll shows only a weak association, the non-parametric binned plot reveals a clear non-linear pattern: playoff probability rises sharply only among the highest-spending teams.
+Together, these results highlight that payroll does matter, but its impact is concentrated among top spenders rather than increasing steadily across the entire distribution.
