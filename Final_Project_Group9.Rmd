@@ -294,14 +294,63 @@ At similar payrolls, outcomes vary widely—execution quality (scouting, develop
 # First Analysis                                                               #
 #------------------------------------------------------------------------------#
 
-# OLS
-```{r}
-
-```
-
 Earlier in the visualization section, we included a plot called “Payroll vs playoff probability (loess or logistic preview)”.
 That plot was mainly part of our initial exploration, just to get a basic sense of how payroll might relate to the chance of making the playoffs. It wasn’t meant to be a final or formal model — more like a first look at the data.
 In the following analysis, we revisit the same question using a cleaner dataset structure and more appropriate modeling choices, so the next few plots represent our formal version of the analysis.
+
+# OLS
+```{r}
+mlb_reg <- mlb %>%
+  filter(!is.na(wins), !is.na(payroll), !is.na(average_age))
+
+ols_model <- lm(wins ~ log_payroll + average_age + factor(year), data = mlb_reg)
+
+summary(ols_model)
+
+tidy_ols <- tidy(ols_model)
+tidy_ols
+```
+OLS Regression Results
+The OLS regression examines how team payroll influences regular-season wins while controlling for roster age and year fixed effects. The model achieves a relatively strong fit, with an R-squared of 0.696, indicating that approximately 70% of the variation in team wins can be explained by payroll, roster age, and season effects.
+
+1. Effect of Payroll
+The coefficient on log_payroll is positive (β = 1.43) but not statistically significant (p = 0.361).
+Interpretation:
+After controlling for roster age and season effects, differences in payroll do not significantly predict differences in win totals.
+A positive but nonsignificant effect suggests that payroll may still matter directionally, but once we account for league-wide factors and age, the effect is too weak or too variable to be distinguished from zero.
+This also aligns with modern MLB trends where player development, analytics, and injuries can overshadow raw payroll size.
+
+2. Effect of Average Roster Age
+The coefficient on average_age is positive and highly significant (β = 7.10, p < 0.001).
+Interpretation:
+A one-year increase in average roster age is associated with about 7 additional wins, holding payroll and year constant.
+This is a large and meaningful effect, suggesting that:
+Older rosters tend to be more experienced or stable
+Younger teams may be rebuilding or rely heavily on developing players
+Age may proxy for accumulated MLB service time, star player stability, or fewer rookie innings
+This is the strongest predictor in the model.
+
+3. Year Fixed Effects
+Most year coefficients are statistically insignificant, meaning most seasons do not differ drastically from the baseline year after accounting for payroll and age.
+The major exception is:
+2020 has a very large and significant negative coefficient (β = -51.59, p < 0.001)
+Interpretation:
+MLB’s shortened 2020 season (60 games due to COVID-19) produced systematically lower win totals, which the model correctly captures.
+Other years show small, insignificant effects—this indicates that typical season-to-season changes do not meaningfully alter win totals after controlling for payroll and age.
+
+4. Model Fit
+R² = 0.6965
+Adjusted R² = 0.6852
+This indicates the model explains a large portion of win variation, driven mainly by roster age and year (especially 2020) rather than payroll.
+
+Overall Interpretation
+The OLS results suggest:
+Payroll does not significantly predict team wins once other factors are controlled.
+Average roster age is the strongest and most significant predictor of wins, indicating that experience and player maturity are crucial for team performance.
+Year effects matter mainly for unusual seasons, such as the COVID-shortened 2020 season.
+Team success is influenced more by experience, development cycles, and season contexts, rather than raw financial spending.
+These results challenge the assumption that higher payroll always leads to better regular-season performance.
+
 # Payroll vs. Playoff Probability — Logistic Regression
 ```{r logit-data, message=FALSE, warning=FALSE}
 mlb_logit <- mlb |>
