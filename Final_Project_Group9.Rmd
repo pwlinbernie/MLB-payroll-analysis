@@ -457,3 +457,51 @@ This plot shows the logistic regression predictions separately for each season. 
 While logistic regression with linear log-payroll shows only a weak association, the non-parametric binned plot reveals a clear non-linear pattern: playoff probability rises sharply only among the highest-spending teams.
 Together, these results highlight that payroll does matter, but its impact is concentrated among top spenders rather than increasing steadily across the entire distribution.
 
+#Roster Stability— Maxcy 
+```{r}
+
+library(readr)
+library(dplyr)
+
+raw_url <- "https://raw.githubusercontent.com/pwlinbernie/MLB-payroll-analysis/refs/heads/main/mlb_payrolls.csv"
+mlb <- read_csv(raw_url, show_col_types = FALSE)
+
+mlb <- mlb %>%
+  mutate(
+    payroll     = as.numeric(gsub("[^0-9.]", "", as.character(`Total Payroll Allocations`))),
+    active26    = as.numeric(gsub("[^0-9.]", "", as.character(`Active 26-Man`))),
+    average_age = as.numeric(gsub("[^0-9.]", "", as.character(`Average Age`))),
+    log_payroll = log(payroll)
+  )
+
+
+glimpse(mlb[, c("Team", "Year", "payroll", "active26", "average_age", "log_payroll")])
+
+
+mlb_stab <- mlb %>%
+  arrange(Team, Year) %>%
+  group_by(Team) %>%
+  mutate(
+    roster_instability  = abs(active26 - lag(active26)),
+    payroll_instability = abs(payroll - lag(payroll)) / lag(payroll)
+  ) %>%
+  ungroup() %>%
+  filter(!is.na(roster_instability))
+
+glimpse(mlb_stab[, c("Team", "Year", "active26", "roster_instability")])
+
+
+model_stab1 <- lm(
+  Wins ~ log_payroll + roster_instability + average_age + factor(Year),
+  data = mlb_stab
+)
+summary(model_stab1)
+
+model_stab2 <- lm(
+  Wins ~ log_payroll * roster_instability + average_age + factor(Year),
+  data = mlb_stab
+)
+summary(model_stab2)
+
+
+```
