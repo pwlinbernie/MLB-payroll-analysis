@@ -3,24 +3,20 @@ title: "MLB Payroll analysis"
 author: "Group 9 Yun An Chen, Hsin Yun Li, Po wei Lin"
 date: "2025-10-31"
 output:
-  word_document:
+  pdf_document:
     toc: true
-    toc_depth: '3'
+    number_sections: true
+    latex_engine: xelatex
   html_document:
     toc: true
     toc_depth: 3
     number_sections: true
     df_print: paged
-  pdf_document:
+  word_document:
     toc: true
-    number_sections: true
-    latex_engine: xelatex
+    toc_depth: '3'
 fontsize: 11pt
-header-includes:
-- \usepackage{fontspec}
-- \setmainfont{Noto Serif CJK TC}
-- \setsansfont{Noto Sans CJK TC}
-- \setmonofont{JetBrains Mono}
+
 ---
 
 ```{r setup, include=FALSE}
@@ -460,3 +456,4 @@ This plot shows the logistic regression predictions separately for each season. 
 
 While logistic regression with linear log-payroll shows only a weak association, the non-parametric binned plot reveals a clear non-linear pattern: playoff probability rises sharply only among the highest-spending teams.
 Together, these results highlight that payroll does matter, but its impact is concentrated among top spenders rather than increasing steadily across the entire distribution.
+
