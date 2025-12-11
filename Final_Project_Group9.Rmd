@@ -457,7 +457,7 @@ This plot shows the logistic regression predictions separately for each season. 
 While logistic regression with linear log-payroll shows only a weak association, the non-parametric binned plot reveals a clear non-linear pattern: playoff probability rises sharply only among the highest-spending teams.
 Together, these results highlight that payroll does matter, but its impact is concentrated among top spenders rather than increasing steadily across the entire distribution.
 
-#Roster Stability— Maxcy 
+# Roster Stability— Maxcy 
 ```{r}
 
 library(readr)
