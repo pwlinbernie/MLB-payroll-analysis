@@ -532,9 +532,8 @@ Although unstable rosters tend to perform worse, increasing payroll does not sys
 This reinforces the earlier finding that payroll alone is not a strong predictor of team success.
 
 The results highlight two key insights:
-Roster stability is a meaningful predictor of team performance.
-Teams that maintain continuity in their core roster tend to outperform teams with high turnover.
-Payroll remains a weak predictor of success in MLB, even after accounting for roster stability.
+1. Roster stability is a meaningful predictor of team performance.Teams that maintain continuity in their core roster tend to outperform teams with high turnover.
+2. Payroll remains a weak predictor of success in MLB, even after accounting for roster stability.
 This underscores the idea that organizational strategy, player development, and roster construction matter more than financial spending alone.
 
 # Age × Payroll Interaction
