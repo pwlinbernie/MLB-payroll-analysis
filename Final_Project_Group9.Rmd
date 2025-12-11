@@ -76,13 +76,15 @@ mlb <- mlb |>
         TRUE ~ 1L
       ),
       
-      log_payroll = log(payroll)
+      log_payroll = log(payroll),
+      active_pct = active26 / payroll
 )
 
 # check
 names(mlb)
 summary(select(mlb, payroll, active26, wins, losses, win_pct, playoffs_bin))
 sum(is.na(mlb$payroll)); sum(is.na(mlb$active26))
+summary(mlb$active_pct)
 ```
 Standardizing column names and converts key variables into numeric formats.
 
@@ -300,8 +302,10 @@ mlb_reg <- mlb %>%
   filter(!is.na(wins), !is.na(payroll), !is.na(average_age))
 
 ols_model <- lm(wins ~ log_payroll + average_age + factor(year), data = mlb_reg)
+ols_model_v2 <- lm(wins ~ log_payroll + active_pct + average_age + factor(year), data = mlb_reg)
 
 summary(ols_model)
+summary(ols_model_v2)
 
 tidy_ols <- tidy(ols_model)
 tidy_ols
@@ -366,8 +370,13 @@ This step prepares the dataset for logistic regression by converting roster age 
 fit_logit <- glm(playoffs_bin ~log_payroll + average_age + factor(year),
                  data = mlb_logit, family = binomial)
 
+fit_logit_v2 <- glm(playoffs_bin ~ log_payroll + active_pct + average_age + factor(year), 
+                    data = mlb_logit, family = binomial)
+
 coefs_or <- tidy(fit_logit, conf.int = TRUE, conf.level = 0.95, exponentiate = TRUE)
 kable(coefs_or, digits = 3, caption = "Logistic regression (odds ratios)")
+
+tidy(fit_logit_v2, conf.int = TRUE, exponentiate = TRUE)
 ```
 We fit a logistic regression model to estimate how payroll affects the likelihood of making the playoffs, controlling for team age and year fixed effects. The table shows odds ratios, which indicate how much the odds of reaching the postseason change for each unit increase in log payroll.
 # Logistic prediction curve + 95% confidence interval
@@ -433,7 +442,7 @@ ggplot(mlb_logit, aes(x = log_payroll, y = playoffs_bin)) +
 ```
 This figure shows the empirical proportion of teams that made the playoffs within evenly spaced bins of log payroll. Each point represents the average playoff rate among teams falling into that payroll range, and the line connects these bin-level averages to highlight the trend without imposing a functional form.
 
-# Predicted curves by year (optional)
+# Predicted curves by year
 ```{r logit-byyear, eval=FALSE}
 # 觀察年度間斜率差異
 yr_keep <- sort(unique(mlb_logit$year))
@@ -505,3 +514,100 @@ summary(model_stab2)
 
 
 ```
+
+Model 1 shows that Roster Instability exhibits a marginally significant negative effect on team wins (β = -4.50e-08, p = 0.0587).
+This indicates that:
+Teams experiencing larger year-to-year changes in their active roster tend to win fewer games.
+This finding is consistent with Maxcy (2002), who argues that excessive roster turnover disrupts team cohesion and reduces on-field performance.
+
+Moreover:
+1. Average Age is strongly and positively associated with wins (p < 0.001), suggesting a potential experience effect.
+2. Payroll remains statistically insignificant even after controlling for roster stability, reinforcing the idea that payroll alone does not guarantee performance.
+
+The interaction term between payroll and roster instability is statistically insignificant (p = 0.199).
+This suggests that:
+Roster instability does not significantly moderate the effect of payroll on team performance.
+
+Although unstable rosters tend to perform worse, increasing payroll does not systematically strengthen or weaken this relationship.
+This reinforces the earlier finding that payroll alone is not a strong predictor of team success.
+
+The results highlight two key insights:
+Roster stability is a meaningful predictor of team performance.
+Teams that maintain continuity in their core roster tend to outperform teams with high turnover.
+Payroll remains a weak predictor of success in MLB, even after accounting for roster stability.
+This underscores the idea that organizational strategy, player development, and roster construction matter more than financial spending alone.
+
+# Age × Payroll Interaction
+```{r}
+mlb_models <- mlb |>
+  mutate(
+    log_payroll_c = log_payroll - mean(log_payroll, na.rm = TRUE),
+    average_age_c = average_age - mean(average_age, na.rm = TRUE),
+    
+    age_payroll_int = log_payroll_c * average_age_c
+  )
+```
+
+```{r}
+m_base <- lm(
+  Wins ~ log_payroll_c + average_age_c,
+  data = mlb_models
+)
+
+summary(m_base)
+```
+
+```{r}
+m_interact <- lm(
+  Wins ~ log_payroll_c * average_age_c,
+  
+  data = mlb_models
+)
+
+summary(m_interact)
+```
+
+```{r}
+anova(m_base, m_interact)
+```
+
+```{r}
+age_mean <- mean(mlb_models$average_age_c, na.rm = TRUE)
+age_sd <- sd(mlb_models$average_age_c, na.rm = TRUE)
+
+pay_min <- min(mlb_models$log_payroll_c, na.rm = TRUE)
+pay_max <- max(mlb_models$log_payroll_c, na.rm = TRUE)
+
+age_levels <- c(
+  age_mean - age_sd,
+  age_mean,
+  age_mean + age_sd
+)
+
+newdata <- expand.grid(
+  log_payroll_c = seq(pay_min, pay_max, length.out = 100),
+  average_age_c = age_levels
+)
+
+newdata <- newdata |>
+  mutate(
+    age_group = case_when(
+      average_age_c == age_levels[1] ~ "Younger Teams (-1 SD)",
+      average_age_c == age_levels[2] ~ "Average-Age Teams",
+      average_age_c == age_levels[3] ~ "Older Teams (+1 SD)"
+    )
+  )
+
+newdata$pred_wins <- predict(m_interact, newdata)
+
+ggplot(newdata, aes(x = log_payroll_c, y = pred_wins, color = age_group)) +
+  geom_line(size = 1.3) +
+  labs(
+    title = "Interaction Effect: Payroll × Age Structure",
+    x = "Log Payroll (Centered)",
+    y = "Predicted Wins",
+    color = "Age Group"
+  ) +
+  theme_minimal(base_size = 14)
+```
+
