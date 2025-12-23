@@ -20,11 +20,16 @@ fontsize: 11pt
 ---
 
 ```{r setup, include=FALSE}
+# Global setup
 knitr::opts_chunk$set(
-  echo = TRUE,
+  echo = FALSE,
   message = FALSE,
   warning = FALSE
-  )
+)
+
+set.seed(123)
+
+# Load packages 
 library(tidyverse)
 library(knitr)
 library(ggplot2)
